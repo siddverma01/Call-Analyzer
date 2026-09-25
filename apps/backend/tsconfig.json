@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node", "vitest/globals"],
+    "moduleResolution": "NodeNext",
+    "module": "NodeNext"
+  },
+  "include": ["src", "prisma", "test", "vitest.config.ts", "../../packages/shared/src", "../../packages/config/src"]
+}

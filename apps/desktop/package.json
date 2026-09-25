@@ -1,0 +1,40 @@
+{
+    "name":  "@callnotes/desktop",
+    "version":  "0.1.0",
+    "private":  true,
+    "description":  "CallNotes AI - local-first meeting transcription, notes, and action items",
+    "author":  "CallNotes AI",
+    "main":  "./out/main/index.js",
+    "scripts":  {
+                    "dev":  "electron-vite dev",
+                    "build:wasapi":  "npm run build -w @callnotes/wasapi-native",
+                    "build":  "npm run build:wasapi \u0026\u0026 electron-vite build",
+                    "start":  "electron-vite preview",
+                    "pack":  "electron-builder --dir",
+                    "dist:win":  "npm run build \u0026\u0026 electron-builder --win nsis --config electron-builder.yml",
+                    "test":  "vitest run --pool=forks --teardownTimeout=5000",
+                    "typecheck":  "tsc -p tsconfig.node.json --noEmit \u0026\u0026 tsc -p tsconfig.web.json --noEmit",
+                    "lint":  "eslint src"
+                },
+    "dependencies":  {
+                         "@callnotes/shared":  "*",
+                         "electron-updater":  "^6.6.2",
+                         "react":  "^19.0.0",
+                         "react-dom":  "^19.0.0",
+                         "zustand":  "^5.0.15"
+                     },
+    "devDependencies":  {
+                            "@tailwindcss/vite":  "^4.3.3",
+                            "@types/node":  "^24.0.0",
+                            "@types/react":  "^19.0.0",
+                            "@types/react-dom":  "^19.0.0",
+                            "@vitejs/plugin-react":  "^5.2.0",
+                            "electron":  "^44.4.4",
+                            "electron-builder":  "^26.15.3",
+                            "electron-vite":  "^5.0.0",
+                            "tailwindcss":  "^4.3.3",
+                            "typescript":  "^5.9.3",
+                            "vite":  "^7.0.0",
+                            "vitest":  "^5.0.1"
+                        }
+}

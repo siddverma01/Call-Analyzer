@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: transparent;
+}
+
+body {
+  font-family:
+    "Segoe UI Variable",
+    "Segoe UI",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  color: #e2e8f0;
+}
+
+/* Drag handling for the frameless overlay: the OS moves the window while the
+   cursor stays over the -webkit-app-region: drag zone, even beyond the pill's
+   58px bounds. Interactive children must opt out with .no-drag. */
+.drag-region {
+  -webkit-app-region: drag;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.no-drag {
+  -webkit-app-region: no-drag;
+}

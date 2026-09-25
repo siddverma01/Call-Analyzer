@@ -1,0 +1,299 @@
+// CallNotes AI - PostgreSQL schema
+// Datasource URL and migration paths are configured in prisma.config.ts.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  moduleFormat = "esm"
+  runtime      = "nodejs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// --------------------------------------------------------------------------
+// Users & roles
+// --------------------------------------------------------------------------
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+}
+
+model User {
+  id           String      @id @default(cuid())
+  name         String      @db.VarChar(120)
+  email        String      @unique @db.VarChar(254)
+  passwordHash String
+  role         Role        @default(USER)
+  status       UserStatus  @default(ACTIVE)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  meetings           Meeting[]
+  templates          Template[]
+  sessions           Session[]
+  auditLogs          AuditLog[]
+  actionItems        ActionItem[]
+  settings           Setting[]
+  templatePreference UserTemplatePreference?
+
+  @@index([role])
+}
+
+// --------------------------------------------------------------------------
+// Authentication sessions (refresh tokens)
+// --------------------------------------------------------------------------
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique @db.VarChar(128)
+  expiresAt DateTime
+  revokedAt DateTime?
+  userAgent String?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// --------------------------------------------------------------------------
+// Meetings
+// --------------------------------------------------------------------------
+
+enum MeetingStatus {
+  DRAFT
+  STARTING
+  RECORDING
+  PROCESSING
+  COMPLETED
+  SYNC_PENDING
+  SYNCED
+  FAILED
+}
+
+model Meeting {
+  id              String        @id @default(cuid())
+  userId          String
+  /** Client-side idempotency key from the offline-first desktop app. */
+  clientMeetingId String?       @db.VarChar(80)
+  title           String        @default("Untitled meeting") @db.VarChar(200)
+  templateId      String?
+  startedAt       DateTime?
+  endedAt         DateTime?
+  durationSeconds Int           @default(0)
+  status          MeetingStatus @default(DRAFT)
+  summary         String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  user                User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  template            Template?             @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  transcriptSegments  TranscriptSegment[]
+  summaryDetails      MeetingSummary[]
+  actionItems         ActionItem[]
+  participantMappings SpeakerMapping[]
+
+  /** PostgreSQL full-text search document (title/transcript/summary/notes). */
+  searchVector Unsupported("tsvector")?
+
+  @@unique([userId, clientMeetingId])
+  @@index([userId, createdAt])
+  @@index([userId, status])
+  @@index([userId, startedAt])
+}
+
+// --------------------------------------------------------------------------
+// Transcripts
+// --------------------------------------------------------------------------
+
+model TranscriptSegment {
+  id              String   @id @default(cuid())
+  meetingId       String
+  clientSegmentId String   @db.VarChar(80)
+  speaker         String   @default("Speaker 1") @db.VarChar(120)
+  startTime       DateTime
+  endTime         DateTime
+  text            String   @db.Text
+  confidence      Float?
+  isEdited        Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  meeting      Meeting?      @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  actionItems  ActionItem[]
+
+  @@unique([meetingId, clientSegmentId])
+  @@index([meetingId, startTime])
+}
+
+// --------------------------------------------------------------------------
+// Summaries & structured notes
+// --------------------------------------------------------------------------
+
+model MeetingSummary {
+  id               String   @id @default(cuid())
+  meetingId        String   @unique
+  summary          String   @db.Text
+  discussionPoints Json?
+  decisions        Json?
+  risks            Json?
+  openQuestions    Json?
+  blockers         Json?
+  followUps        Json?
+  importantDates   Json?
+  participants     Json?
+  actionItems      Json?
+  sections         Json?
+  aiModel          String?
+  aiProvider       String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+}
+
+// --------------------------------------------------------------------------
+// Action items / tasks
+// --------------------------------------------------------------------------
+
+enum ActionItemStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model ActionItem {
+  id            String          @id @default(cuid())
+  meetingId     String?
+  userId        String
+  /** Client-side idempotency key from the offline-first desktop app. */
+  clientItemId  String?         @db.VarChar(80)
+  description   String          @db.Text
+  assignee      String?         @db.VarChar(120)
+  dueDate       DateTime?
+  priority      Priority        @default(MEDIUM)
+  status        ActionItemStatus @default(OPEN)
+  sourceSegmentId String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  meeting        Meeting?            @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceSegment  TranscriptSegment?  @relation(fields: [sourceSegmentId], references: [id], onDelete: SetNull)
+
+  @@unique([meetingId, clientItemId])
+  @@index([userId, status])
+  @@index([meetingId, status])
+  @@index([sourceSegmentId])
+}
+
+// --------------------------------------------------------------------------
+// Speaker mapping (Speaker 1 -> "John")
+// --------------------------------------------------------------------------
+
+model SpeakerMapping {
+  id        String  @id @default(cuid())
+  meetingId String
+  label     String  @db.VarChar(40)
+  name      String  @db.VarChar(120)
+
+  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  @@unique([meetingId, label])
+}
+
+// --------------------------------------------------------------------------
+// Templates
+// --------------------------------------------------------------------------
+
+enum TemplateType {
+  SYSTEM
+  CUSTOM
+}
+
+model Template {
+  id        String       @id @default(cuid())
+  userId    String?
+  name      String       @db.VarChar(120)
+  type      TemplateType @default(CUSTOM)
+  description String?
+  schema    Json
+  prompt    String?      @db.Text
+  isDefault Boolean      @default(false)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  user      User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  meetings  Meeting[]
+  preferences UserTemplatePreference[]
+
+  @@index([userId, isDefault])
+  @@index([type])
+}
+
+// --------------------------------------------------------------------------
+// Per-user default template preference (works for system + custom templates)
+// --------------------------------------------------------------------------
+
+model UserTemplatePreference {
+  userId     String   @id
+  templateId String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  template Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([templateId])
+}
+
+// --------------------------------------------------------------------------
+// User settings
+// --------------------------------------------------------------------------
+
+model Setting {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  keyValues Json     @default("{}")
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// --------------------------------------------------------------------------
+// Audit log
+// --------------------------------------------------------------------------
+
+model AuditLog {
+  id        String    @id @default(cuid())
+  userId    String?
+  action    String    @db.VarChar(80)
+  resource  String    @db.VarChar(80)
+  resourceId String?  @db.VarChar(80)
+  metadata  Json?
+  createdAt DateTime  @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([userId, createdAt])
+  @@index([action])
+}

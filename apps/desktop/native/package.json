@@ -1,0 +1,15 @@
+{
+  "name": "@callnotes/wasapi-native",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Real WASAPI audio capture (microphone + system loopback) as a Node-API addon",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "rebuild": "node build.mjs --force",
+    "typecheck": "node --check build.mjs",
+    "lint": "node --check build.mjs",
+    "test": "node --check build.mjs"
+  },
+  "files": ["prebuilds", "deps", "src", "build.mjs", "README.md"]
+}

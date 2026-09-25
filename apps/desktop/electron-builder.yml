@@ -1,0 +1,47 @@
+appId: com.callnotes.ai
+productName: CallNotes AI
+copyright: Copyright © 2026 CallNotes AI
+electronVersion: 44.4.4
+
+directories:
+  output: release
+  buildResources: build
+
+# The renderer is bundled by electron-vite into `out`; the two native addons
+# (WASAPI audio capture + statically linked whisper.cpp) ship prebuilt for
+# win32-x64. Neither Rust MSVC tooling nor whisper.cpp needs to exist on the
+# end-user machine - the installer only carries the prebuilt .node binaries and
+# the models are downloaded at runtime (HTTPS + sha1-verified) into userData.
+files:
+  - out/**
+  - package.json
+  - native/prebuilds/*.node
+
+asarUnpack:
+  - native/prebuilds/*.node
+
+asar: true
+
+npmRebuild: false
+
+electronLanguages:
+  - en-US
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  artifactName: ${productName}-${version}-setup.${ext}
+  # Windows SmartScreen / integrity: the installer is signed only when a code
+  # signing cert is provided via win.certificateFile or the CSC_LINK env var
+  # at build time. Without a cert the NSIS build is unsigned.
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: CallNotes AI
+  deleteAppDataOnUninstall: false

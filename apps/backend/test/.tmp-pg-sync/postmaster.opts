@@ -1,0 +1,1 @@
+C:/DATA/coding/Live Transcribe/node_modules/@embedded-postgres/windows-x64/native/bin/postgres.exe "-D" "./test/.tmp-pg-sync" "-p" "55633"

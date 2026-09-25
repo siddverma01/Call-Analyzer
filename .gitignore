@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+out/
+build/
+release/
+
+# Environment - never commit secrets
+.env
+.env.*
+!.env.example
+
+# Databases / local data
+data/
+*.db
+*.sqlite
+*.sqlite3
+prisma/*.db
+
+# Generated code
+generated/
+
+# Desktop resources (downloaded at runtime)
+apps/desktop/resources/
+
+# Native WASAPI addon build artifacts (regenerate with: npm run build:wasapi)
+apps/desktop/native/prebuilds/
+apps/desktop/native/.build-cache/
+
+# Logs
+*.log
+logs/
+logs.txt
+
+# Coverage
+coverage/
+
+# Editors / OS
+.DS_Store
+.vscode/
+.idea/
+*.swp
+Thumbs.db

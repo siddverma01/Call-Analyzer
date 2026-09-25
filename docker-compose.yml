@@ -1,0 +1,26 @@
+# Development / production deployment for the CallNotes AI backend dependencies.
+# The desktop application never pushes audio here - only text.
+#
+#   docker compose up -d postgres
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: callnotes-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: callnotes
+      POSTGRES_PASSWORD: callnotes
+      POSTGRES_DB: callnotes
+    ports:
+      - "55432:5432"
+    volumes:
+      - callnotes_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U callnotes -d callnotes"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  callnotes_pgdata:
+    driver: local

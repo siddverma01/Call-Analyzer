@@ -1,0 +1,48 @@
+{
+  "name": "callnotes-ai",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CallNotes AI - local-first meeting transcription, notes, and action items",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=22.0.0",
+    "npm": ">=11.0.0"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*",
+    "apps/desktop/native"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w apps/backend",
+    "dev:backend": "npm run dev -w apps/backend",
+    "dev:admin": "npm run dev -w apps/admin",
+    "dev:desktop": "npm run dev -w apps/desktop",
+    "build:wasapi": "npm run build -w @callnotes/wasapi-native",
+    "build": "npm run build --workspaces --if-present",
+    "build:backend": "npm run build -w apps/backend",
+    "build:admin": "npm run build -w apps/admin",
+    "build:desktop": "npm run build -w apps/desktop",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "format": "prettier --write .",
+    "db:generate": "npm run db:generate -w apps/backend",
+    "db:migrate": "npm run db:migrate -w apps/backend",
+    "db:seed": "npm run db:seed -w apps/backend",
+    "db:up": "node scripts/dev-db.mjs up",
+    "db:down": "node scripts/dev-db.mjs down",
+    "verify": "node scripts/verify-backend.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "embedded-postgres": "^18.4.0-beta.17",
+    "eslint": "^9.17.0",
+    "prettier": "^3.5.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.26.0"
+  },
+  "dependencies": {
+    "@embedded-postgres/windows-x64": "^18.4.0-beta.17"
+  }
+}

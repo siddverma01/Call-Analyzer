@@ -56,61 +56,75 @@ All phases are implemented and verified end to end:
 
 ## Requirements
 
-- Windows 10/11 64-bit (primary target) or any OS supported by Node/Electron for dev
-- Node.js ≥ 22 (Node 26 recommended, used for CI here)
-- npm ≥ 11
-- PostgreSQL 16/17 — via Docker (`docker compose up -d`) **or** the embedded
-  harness below (`npm run db:up`), which needs no Docker
-- For corporate/proxied networks: set `NODE_OPTIONS=--use-system-ca` so Node trusts
-  the OS certificate store for Prisma/Electron/model downloads
-- Windows installer build additionally needs internet access the first time
-  (electron-builder downloads the Electron runtime + NSIS tooling)
+- **Windows 10/11 64-bit** (primary target for WASAPI loopback, mic capture, and hardware VAD)
+- **Node.js ≥ 22** (Node 24 or 26 recommended)
+- **npm ≥ 11**
+- **Zig Compiler ≥ 0.13** (required for compiling native WASAPI and Whisper addons):
+  ```sh
+  winget install zig.zig
+  ```
+- **PostgreSQL 16/17** — via Docker (`docker compose up -d`) **or** the embedded harness (`npm run db:up`), which requires zero external configuration
+- For corporate/proxied networks: set `NODE_OPTIONS=--use-system-ca` so Node trusts the OS certificate store for Prisma/Electron/model downloads
+- Windows installer build additionally needs internet access on first run (electron-builder downloads the Electron runtime + NSIS tooling)
 
 ## Quick start
 
 ```sh
+# 1. Install workspace dependencies
 npm install
 
-# One command: embedded PostgreSQL → migrations → backend (http://127.0.0.1:8787, docs at /docs)
+# 2. Copy the environment configuration
+copy .env.example .env
+
+# 3. Build native Windows audio capture & Whisper inference addons (requires Zig)
+npm run build:wasapi
+
+# 4. Start backend (embedded PostgreSQL + auto-migrate + Fastify API at http://127.0.0.1:8787, docs at /docs)
 npm run dev
 
-# Seed development users (admin@callnotes.local + demo@callnotes.local; creds in .env SEED_*_PASSWORD)
+# 5. Seed default development users (in a second terminal)
 npm run db:seed
 
-# Admin console (http://localhost:5174) and desktop app (Electron)
+# 6. Start the web admin console (http://localhost:5174)
 npm run dev:admin
+
+# 7. Start the desktop client (or double-click run-desktop.bat)
 npm run dev:desktop
 ```
 
-> `npm run dev` boots embedded PostgreSQL automatically (no Docker needed) and
-> applies pending migrations; Ctrl+C also stops the database cleanly. For a
-> Docker-based setup use `docker compose up -d postgres` plus `EMBEDDED_PG=0`.
-> The desktop app talks to the backend at `CALLNOTES_API_URL`
-> (default `http://127.0.0.1:8787`).
+> **Default Seed Credentials:**
+> - **Admin:** `admin@callnotes.local` / `change-me`
+> - **User:** `demo@callnotes.local` / `change-me`
 
-One-command verification of the whole backend without Docker:
+> `npm run dev` boots embedded PostgreSQL automatically (no Docker needed) and applies pending migrations; Ctrl+C also stops the database cleanly. For a Docker-based setup use `docker compose up -d postgres` plus `EMBEDDED_PG=0`. The desktop app talks to the backend at `CALLNOTES_API_URL` (default `http://127.0.0.1:8787`).
 
-```sh
-npm run verify
-```
+## Desktop Client & Meeting Detection
+
+- **1-Click Launcher:** Windows users can double-click `run-desktop.bat` in the root folder to start the desktop app.
+- **Audio Capture Pipeline:** Connects directly to Windows WASAPI for dual-stream capture (Microphone Array + System Audio Loopback). No virtual audio cables or cloud audio bots.
+- **On-Device Whisper:** Uses local `whisper.cpp` (compiled with AVX2 and FMA optimizations). Whisper models (`tiny`, `base`, `small`, etc.) download on-demand and are verified via SHA-1.
+- **Pre-Meeting Mic Test:** The "Test" button on the New Meeting page records a 3-second sample to verify microphone levels and voice activity before starting.
+- **Automatic Call Detection & Floating Overlay:** The desktop app continuously monitors system audio energy via loopback capture. When sustained speech is detected from web meetings (such as Google Meet or Zoom in Chrome/Edge) or native conferencing apps (Teams, Slack), a transparent floating overlay automatically pops up offering 1-click meeting transcription.
+- **Offline-First Storage:** Transcripts and notes are persisted locally in SQLite (`%APPDATA%/@callnotes/desktop/callnotes.db`) and synced idempotently to the backend when online.
 
 ## Commands
 
-| Command                | Purpose                                          |
-| ---------------------- | ------------------------------------------------ |
-| `npm run dev`          | Backend: embedded PostgreSQL + migrate + API     |
-| `npm run dev:backend`  | Backend only (skip embedded DB)                  |
-| `npm run dev:admin`    | Start the admin console                          |
-| `npm run dev:desktop`  | Start the Electron desktop app                   |
-| `npm run build`        | Build all workspaces                             |
-| `npm run typecheck`    | Type-check all workspaces (strict TS)            |
-| `npm run lint`         | ESLint all workspaces                            |
-| `npm run test`         | Run all workspace tests (Vitest)                 |
-| `npm run db:up/down`   | Start/stop embedded PostgreSQL (foreground)      |
-| `npm run db:migrate`   | Create + run Prisma migrations                   |
-| `npm run db:seed`      | Seed development users                           |
-| `npm run verify`       | End-to-end backend health verification           |
-| `npm run dist:win -w apps/desktop` | Build the Windows NSIS installer      |
+| Command                             | Purpose                                                    |
+| ----------------------------------- | ---------------------------------------------------------- |
+| `npm run dev`                       | Backend: embedded PostgreSQL + migrate + API (`:8787`)     |
+| `npm run dev:backend`               | Backend only (skip embedded DB)                            |
+| `npm run dev:admin`                 | Start the Vite Admin web console (`:5174`)                 |
+| `npm run dev:desktop`               | Start the Electron desktop client (or `run-desktop.bat`)   |
+| `npm run build:wasapi`              | Compile native WASAPI and Whisper addons with Zig          |
+| `npm run build`                     | Build all workspaces for production                        |
+| `npm run typecheck`                 | Type-check all workspaces (strict TypeScript)              |
+| `npm run lint`                      | ESLint all workspaces                                      |
+| `npm run test`                      | Run all workspace unit & integration tests (Vitest)        |
+| `npm run db:up / db:down`           | Start/stop embedded PostgreSQL (foreground)                |
+| `npm run db:migrate`                | Create + run Prisma database migrations                    |
+| `npm run db:seed`                   | Seed development admin and demo users                      |
+| `npm run verify`                    | End-to-end backend health & API verification               |
+| `npm run dist:win -w @callnotes/desktop` | Build the standalone Windows NSIS installer (`.exe`)  |
 
 ## Environment
 

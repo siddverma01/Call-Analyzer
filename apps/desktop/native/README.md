@@ -25,9 +25,12 @@ Requires a Windows host and the [Zig](https://ziglang.org) toolchain
 npm run build:wasapi   # from the repo root (or: cd apps/desktop/native && node build.mjs)
 ```
 
-Output: `prebuilds/callnotes-wasapi-<platform>-<arch>.node`
-(64-bit only; a DLL import library for `node.exe` is synthesized at build time
-from the running interpreter via `zig dlltool`, and the N-API headers bundled
+Outputs:
+- `prebuilds/callnotes-wasapi-<platform>-<arch>.node` (WASAPI audio capture)
+- `prebuilds/callnotes-whisper-<platform>-<arch>.node` (whisper.cpp CPU inference)
+
+(64-bit only; a DLL import library for `electron.exe` / `node.exe` is synthesized at build time
+from the runtime executable via `zig dlltool`, and the N-API headers bundled
 in `deps/` are used — the build is hermetic and offline).
 
 ## API

@@ -1,7 +1,10 @@
 import EmbeddedPostgres from "embedded-postgres";
-import { execSync } from "node:child_process";
+import { execFileSync, execSync } from "node:child_process";
 import { rmSync, existsSync } from "node:fs";
 import { join } from "node:path";
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
 
 export interface DevPostgres {
   databaseUrl: string;
@@ -115,9 +118,10 @@ export async function startEmbeddedPostgres(): Promise<DevPostgres> {
  * runs from the backend workspace directory (npm sets this cwd).
  */
 export function runMigrations(databaseUrl: string): void {
-  execSync("npx.cmd prisma migrate deploy", {
+  const prismaCli = require.resolve("prisma/build/index.js");
+  execFileSync(process.execPath, [prismaCli, "migrate", "deploy"], {
     cwd: process.cwd(),
-    stdio: "inherit",
+    stdio: ["ignore", "inherit", "inherit"],
     env: { ...process.env, DATABASE_URL: databaseUrl },
     timeout: 120_000,
   });

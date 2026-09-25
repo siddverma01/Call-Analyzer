@@ -28,6 +28,7 @@ apps/desktop/resources/
 # Native WASAPI addon build artifacts (regenerate with: npm run build:wasapi)
 apps/desktop/native/prebuilds/
 apps/desktop/native/.build-cache/
+apps/desktop/native/deps/whisper.cpp/
 
 # Logs
 *.log

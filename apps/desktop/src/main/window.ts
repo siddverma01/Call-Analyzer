@@ -14,7 +14,7 @@ export function createMainWindow(isDevelopment: boolean): BrowserWindow {
     height: 820,
     minWidth: 1024,
     minHeight: 680,
-    show: false,
+    show: true,
     title: "CallNotes AI",
     backgroundColor: "#0f172a",
     webPreferences: {
@@ -26,7 +26,27 @@ export function createMainWindow(isDevelopment: boolean): BrowserWindow {
     },
   });
 
-  window.once("ready-to-show", () => window.show());
+  window.webContents.on("console-message", (_event, level, message, line, sourceId) => {
+    console.log(`[renderer console] [${level}] ${message} (${sourceId}:${line})`);
+  });
+
+  window.once("ready-to-show", () => {
+    console.log("[desktop] window ready-to-show fired!");
+    window.show();
+    window.focus();
+    window.setAlwaysOnTop(true);
+    window.setAlwaysOnTop(false);
+  });
+  window.webContents.on("did-finish-load", () => {
+    console.log("[desktop] did-finish-load fired!");
+    if (!window.isVisible()) {
+      window.show();
+      window.focus();
+    }
+  });
+  window.webContents.on("did-fail-load", (_event, code, desc, url) => {
+    console.error(`[desktop] did-fail-load: ${code} (${desc}) at ${url}`);
+  });
   window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
 
   // Only allow navigation to app content; open anything else in the OS browser.
@@ -38,6 +58,7 @@ export function createMainWindow(isDevelopment: boolean): BrowserWindow {
   });
 
   const devServerUrl = process.env["ELECTRON_RENDERER_URL"];
+  console.log(`[desktop] isDevelopment=${isDevelopment}, devServerUrl=${devServerUrl}`);
   if (isDevelopment && devServerUrl) {
     void window.loadURL(devServerUrl);
   } else {

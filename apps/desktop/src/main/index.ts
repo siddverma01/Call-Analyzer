@@ -168,21 +168,30 @@ function createServices(): ApiClient {
 }
 
 void app.whenReady().then(() => {
-  createServices();
+  console.log("[desktop] app.whenReady fired");
+  try {
+    createServices();
+    console.log("[desktop] services created");
+  } catch (err) {
+    console.error("[desktop] createServices failed:", err);
+  }
 
   configureAutoUpdate((channel, payload) => {
     const window = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
     window?.webContents.send(channel, payload);
   });
 
-  const mainWindow = createMainWindow(isDevelopment);
-  mainWindowRef = mainWindow;
-  mainWindow.on("closed", () => {
-    mainWindowRef = null;
-    // The hidden overlay must not keep the app alive once the app window is
-    // gone; destroy it so `window-all-closed` fires normally.
-    overlayController?.dispose();
-  });
+  try {
+    const mainWindow = createMainWindow(isDevelopment);
+    mainWindowRef = mainWindow;
+    console.log("[desktop] main window created");
+    mainWindow.on("closed", () => {
+      mainWindowRef = null;
+      overlayController?.dispose();
+    });
+  } catch (err) {
+    console.error("[desktop] createMainWindow failed:", err);
+  }
   app.on("browser-window-created", (_event, window) => {
     window.on("closed", () => {
       /* windows tracked individually if needed later */

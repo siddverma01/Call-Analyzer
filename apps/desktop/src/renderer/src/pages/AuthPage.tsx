@@ -102,7 +102,7 @@ export function AuthPage(): JSX.Element {
                   placeholder={mode === "register" ? "Choose a strong password" : "Your password"}
                   autoComplete={mode === "login" ? "current-password" : "new-password"}
                   required
-                  minLength={10}
+                  minLength={mode === "register" ? 10 : 1}
                   maxLength={128}
                   className="pr-10"
                 />

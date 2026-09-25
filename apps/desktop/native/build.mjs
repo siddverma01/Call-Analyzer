@@ -137,23 +137,24 @@ function readPeExports(exePath) {
   return [...new Set(names)];
 }
 
-async function ensureImportLib(zig, nodeExe) {
+async function ensureImportLib(zig, targetExe) {
+  const exeName = basename(targetExe);
   const version = process.versions.node;
-  const stamp = statSync(nodeExe).mtimeMs;
-  const key = createHash("sha1").update(`${version}|${stamp}`).digest("hex").slice(0, 12);
-  const libPath = join(cacheDir, `node-${version}-${key}.lib`);
+  const stamp = statSync(targetExe).mtimeMs;
+  const key = createHash("sha1").update(`${exeName}|${version}|${stamp}`).digest("hex").slice(0, 12);
+  const libPath = join(cacheDir, `${exeName.replace(/\.exe$/i, "")}-${version}-${key}.lib`);
   if (existsSync(libPath)) return libPath;
 
   mkdirSync(cacheDir, { recursive: true });
-  log("native", `synthesizing import library from ${basename(nodeExe)} (node v${version})`);
-  const exports = readPeExports(nodeExe);
-  if (exports.length < 100) fail(`could not parse exports from ${nodeExe} (got ${exports.length})`);
+  log("native", `synthesizing import library from ${exeName} (node v${version})`);
+  const exports = readPeExports(targetExe);
+  if (exports.length < 100) fail(`could not parse exports from ${targetExe} (got ${exports.length})`);
 
-  const defPath = join(cacheDir, `node-${version}.def`);
-  const defLines = ["LIBRARY node.exe", "EXPORTS", ...exports.map((n) => `  ${n}`)];
+  const defPath = join(cacheDir, `${exeName.replace(/\.exe$/i, "")}-${version}.def`);
+  const defLines = [`LIBRARY ${exeName}`, "EXPORTS", ...exports.map((n) => `  ${n}`)];
   writeFileSync(defPath, defLines.join("\n") + "\n", "utf8");
 
-  const tmpLib = join(cacheDir, `node-unstamped.lib`);
+  const tmpLib = join(cacheDir, `${exeName.replace(/\.exe$/i, "")}-unstamped.lib`);
   const res = spawnSync(zig.exe, ["dlltool", "-m", "i386:x86-64", "-d", defPath, "-l", tmpLib], {
     encoding: "utf8",
     stdio: "pipe",
@@ -176,7 +177,7 @@ async function ensureNodeHeaders() {
 
 /** Runs an external tool, failing with a readable message on non-zero exit. */
 function run(tool, tag, args) {
-  const res = spawnSync(tool, args, { encoding: "utf8", stdio: "pipe" });
+  const res = spawnSync(tool, args, { encoding: "utf8", stdio: "pipe", maxBuffer: 64 * 1024 * 1024 });
   if (res.status !== 0) {
     const stderr = (res.stderr ?? "").trim();
     const lines = stderr.length === 0 ? (res.stdout ?? "").trim() : stderr;
@@ -200,6 +201,10 @@ function runTagged(tool, tag, args) {
 function buildWasapi(zig, importLib, nodeIncludes) {
   const outName = `callnotes-wasapi-${platform}-${arch}.node`;
   const outPath = join(prebuildsDir, outName);
+  if (!force && existsSync(outPath)) {
+    log("wasapi", `up to date (${outName})`);
+    return;
+  }
 
   const args = [
     "cc",
@@ -271,6 +276,10 @@ const WHISPER_CPP_SOURCES = [
 function buildWhisper(zig, importLib, nodeIncludes) {
   const outName = `callnotes-whisper-${platform}-${arch}.node`;
   const outPath = join(prebuildsDir, outName);
+  if (!force && existsSync(outPath)) {
+    log("whisper", `up to date (${outName})`);
+    return;
+  }
 
   if (!existsSync(join(whisperSrc, "src", "whisper.cpp"))) {
     fail(
@@ -358,6 +367,7 @@ function buildWhisper(zig, importLib, nodeIncludes) {
       "x86_64-windows-gnu",
       "-O2",
       "-shared",
+      "-Wno-nullability-completeness",
       ...objects,
       importLib,
       "-o",
@@ -391,8 +401,20 @@ async function main() {
   }
   log("native", `using Zig ${zig.version} (${zig.exe})`);
 
-  const nodeExe = process.execPath;
-  const importLib = await ensureImportLib(zig, nodeExe);
+  let targetExe = process.execPath;
+  const electronCandidates = [
+    join(root, "..", "..", "..", "node_modules", "electron", "dist", "electron.exe"),
+    join(root, "..", "node_modules", "electron", "dist", "electron.exe"),
+    join(root, "node_modules", "electron", "dist", "electron.exe"),
+  ];
+  for (const cand of electronCandidates) {
+    if (existsSync(cand)) {
+      targetExe = cand;
+      break;
+    }
+  }
+
+  const importLib = await ensureImportLib(zig, targetExe);
   const nodeIncludes = await ensureNodeHeaders();
 
   buildWasapi(zig, importLib, nodeIncludes);

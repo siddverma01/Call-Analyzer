@@ -50,7 +50,8 @@ export function App(): JSX.Element {
 
   const loadSession = useCallback(async (): Promise<void> => {
     try {
-      const user = await fetchJson<MeResponse>("/api/me");
+      const res = await fetchJson<{ user: MeResponse } | MeResponse>("/api/me");
+      const user = "user" in res && res.user ? res.user : (res as MeResponse);
       setGate({ state: "authenticated", user });
     } catch {
       setGate({ state: "anonymous" });

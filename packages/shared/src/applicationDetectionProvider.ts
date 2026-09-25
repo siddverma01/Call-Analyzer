@@ -1,3 +1,5 @@
+import type { DetectionState } from "./detectionProvider.ts";
+
 /**
  * Enumerate the applications for which CallNotes AI may provide
  * application‑specific call detection.  Only the platforms for which a
